@@ -22,7 +22,7 @@ export async function createOrganisation(input: { name: string; type: OrgType; r
   });
   await prisma.activity.create({ data: { orgId: org.id, type: "note", summary: "Customer card created." } });
   revalidatePath("/staff/crm");
-  return org;
+  return { id: org.id };
 }
 
 export async function updateOrganisation(input: {
