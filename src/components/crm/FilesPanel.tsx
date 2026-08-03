@@ -41,19 +41,24 @@ export default function FilesPanel({ orgId, links }: FilesPanelProps) {
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
       <ul className="mt-3 flex flex-col gap-2">
-        {links.map((link) => (
-          <li key={link.documentId}>
-            <a
-              href={link.document.content}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-neutral-text hover:bg-neutral-card"
-            >
-              <FileText size={15} className="flex-shrink-0 text-neutral-muted" />
-              <span className="truncate">{link.document.title}</span>
-            </a>
-          </li>
-        ))}
+        {links.map((link) => {
+          const isUploadedFile = !link.document.isTemplate && link.document.content.startsWith("/uploads/");
+          const href = isUploadedFile ? link.document.content : `/staff/documents/${link.documentId}`;
+          return (
+            <li key={link.documentId}>
+              <a
+                href={href}
+                target={isUploadedFile ? "_blank" : undefined}
+                rel={isUploadedFile ? "noopener noreferrer" : undefined}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-neutral-text hover:bg-neutral-card"
+              >
+                <FileText size={15} className="flex-shrink-0 text-neutral-muted" />
+                <span className="truncate">{link.document.title}</span>
+                {link.document.isTemplate && <span className="text-xs text-neutral-muted">(template)</span>}
+              </a>
+            </li>
+          );
+        })}
         {links.length === 0 && <li className="text-sm text-neutral-muted">No files attached yet.</li>}
       </ul>
     </div>
