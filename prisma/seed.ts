@@ -124,6 +124,64 @@ async function main() {
     skipDuplicates: true,
   });
 
+  await prisma.document.createMany({
+    data: [
+      {
+        id: "seed-doc-master-resource-guide",
+        title: "Master Resource Guide",
+        type: "resource",
+        content: "The full post-talk resource guide: what to do in the first week, first month and first term after the session.",
+        isTemplate: false,
+        isPublicResource: true,
+        createdById: rebecca.id,
+      },
+      {
+        id: "seed-doc-application-prep-worksheet",
+        title: "Application Preparation Worksheet",
+        type: "resource",
+        content: "A worksheet to map your achievements against the five panel categories before you start any application.",
+        isTemplate: false,
+        isPublicResource: true,
+        createdById: rebecca.id,
+      },
+      {
+        id: "seed-doc-cv-linkedin-guide",
+        title: "CV & LinkedIn Guide",
+        type: "resource",
+        content: "How to turn your five-category achievements into a CV and a LinkedIn profile that actually gets read.",
+        isTemplate: false,
+        isPublicResource: true,
+        createdById: rebecca.id,
+      },
+      {
+        id: "seed-doc-personal-statement-template",
+        title: "Personal Statement Template",
+        type: "resource",
+        content: "The Personal Statement structure: values and fit, leadership, community, academic, an honest moment, and closing.",
+        isTemplate: false,
+        isPublicResource: true,
+        createdById: rebecca.id,
+      },
+      {
+        id: "seed-doc-proposal-template",
+        title: "Term Proposal Template",
+        type: "proposal",
+        content:
+          "Dear {{contact_name}},\n\nThank you for the chance to put together a proposal for {{organisation_name}} for {{year_level}} in {{event_date}}.\n\nBest,\nRebecca",
+        isTemplate: true,
+        variables: ["contact_name", "organisation_name", "year_level", "event_date"],
+        createdById: rebecca.id,
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  await prisma.documentLink.upsert({
+    where: { documentId_orgId: { documentId: "seed-doc-proposal-template", orgId: school.id } },
+    update: {},
+    create: { documentId: "seed-doc-proposal-template", orgId: school.id },
+  });
+
   console.log("Seed complete.");
   console.log("Sign in as:");
   console.log("  staff:             rebecca@realtime.local / password123");
