@@ -1,26 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Realtime Branding Kit tokens, ported verbatim (see project brief section 2).
+ * Deep scale = corporate/staff-lean surfaces. Light scale = schools/student-lean
+ * surfaces. Never introduce ad hoc colours outside this palette.
+ */
+@theme {
+  --font-display: 'Fraunces', serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Primary Deep scale (Staff Admin, Business Customer Portal) */
+  --color-deep-50: #f1f2fc;
+  --color-deep-100: #e2e5f8;
+  --color-deep-200: #c6cbf1;
+  --color-deep-300: #a9b0ea;
+  --color-deep-400: #7e89e0;
+  --color-deep-500: #4c5bd4;
+  --color-deep-600: #3d49aa;
+  --color-deep-700: #2e377f;
+  --color-deep-800: #1e2455;
+  --color-deep-900: #11142f;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Primary Light scale (Student Portal) */
+  --color-light-50: #f4f6ff;
+  --color-light-100: #eaecff;
+  --color-light-200: #d4daff;
+  --color-light-300: #bfc7ff;
+  --color-light-400: #9facff;
+  --color-light-500: #7a8bff;
+  --color-light-600: #626fcc;
+  --color-light-700: #495399;
+  --color-light-800: #313866;
+  --color-light-900: #1b1f38;
+
+  /* Neutrals */
+  --color-neutral-bg: #f6f7fb;
+  --color-neutral-card: #ebedf3;
+  --color-neutral-border: #dde0e9;
+  --color-neutral-muted: #6f7a8a;
+  --color-neutral-text: #141c2e;
+
+  /* Accent teal: one moment per screen max, never a primary CTA colour */
+  --color-teal-100: #dcf8f6;
+  --color-teal-500: #22d3c5;
+  --color-teal-700: #147f76;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--color-neutral-bg);
+  color: var(--color-neutral-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
 }

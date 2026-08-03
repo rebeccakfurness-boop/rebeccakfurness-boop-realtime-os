@@ -1,0 +1,465 @@
+// Realtime OS — full schema.
+// Auth.js (NextAuth v5) models (Account/Session/VerificationToken) sit alongside the
+// product schema described in the project brief, section 7, expanded where the brief's
+// "minimum viable" fields needed a real relation (e.g. document versioning, activity feed).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  staff
+  student
+  business_customer
+}
+
+enum OrgType {
+  school
+  university
+  training_institute
+  corporate
+  other
+}
+
+enum PipelineStage {
+  outreach
+  enquiry
+  proposal_sent
+  booked
+  delivered
+  invoiced
+  paid
+}
+
+enum PaidStatus {
+  unpaid
+  partial
+  paid
+}
+
+enum GoalOwnerType {
+  staff
+  student
+}
+
+enum GoalCategory {
+  corporate
+  schools
+  marketing
+  finance
+  ops
+  personal
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+}
+
+enum EmailDirection {
+  inbound
+  outbound
+}
+
+enum DocumentType {
+  script
+  presentation
+  proposal
+  resource
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  overdue
+}
+
+enum BillStatus {
+  scheduled
+  paid
+}
+
+enum TransactionDirection {
+  in
+  out
+}
+
+enum MeetingType {
+  sales_call
+  follow_up
+  event_delivery
+  internal
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js (NextAuth v5 / Auth.js) required models
+// ---------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Users & organisations
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  passwordHash  String?
+  role          Role      @default(student)
+  image         String?
+  createdAt     DateTime  @default(now())
+
+  orgId String?
+  org   Organisation? @relation(fields: [orgId], references: [id])
+
+  accounts Account[]
+  sessions Session[]
+
+  assignedTasks        Task[]                @relation("TaskAssignee")
+  ownedGoals           Goal[]                @relation("GoalOwnerUser")
+  timeEntries          TimeEntry[]
+  meetingsAsStaff      Meeting[]             @relation("MeetingStaff")
+  documentsCreated     Document[]            @relation("DocumentCreatedBy")
+  bookmarks            StudentBookmark[]
+  cvDocuments          CvDocument[]
+  applicationDocuments ApplicationDocument[]
+  coverLetters         CoverLetter[]
+  invites              Invite[]              @relation("InviteCreatedBy")
+}
+
+/// A staff invite (new staff member) or a business-customer invite issued from a
+/// Customer Card. Consumed on first sign-in via the magic-link/token flow.
+model Invite {
+  id            String   @id @default(cuid())
+  email         String
+  role          Role
+  orgId         String?
+  org           Organisation? @relation(fields: [orgId], references: [id])
+  token         String   @unique
+  createdById   String?
+  createdBy     User?    @relation("InviteCreatedBy", fields: [createdById], references: [id])
+  acceptedAt    DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+}
+
+model Organisation {
+  id            String        @id @default(cuid())
+  name          String
+  type          OrgType
+  region        String?
+  source        String?
+  status        String?
+  pipelineStage PipelineStage @default(outreach)
+  dealValueNzd  Decimal?      @db.Decimal(10, 2)
+  invoiced      Boolean       @default(false)
+  paidStatus    PaidStatus    @default(unpaid)
+  notes         String?       @db.Text
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  users         User[]
+  contacts      Contact[]
+  emails        Email[]
+  documentLinks DocumentLink[]
+  timeEntries   TimeEntry[]
+  invoices      Invoice[]
+  meetings      Meeting[]
+  activities    Activity[]
+  invites       Invite[]
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name      String
+  title     String?
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+
+  emails Email[]
+}
+
+/// Populated via the Gmail integration abstraction (see src/lib/integrations/gmail.ts).
+model Email {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  subject   String
+  body      String   @db.Text
+  direction EmailDirection
+  timestamp DateTime @default(now())
+}
+
+/// Chronological activity feed per Customer Card: emails, calls, meetings, notes,
+/// invoices, tasks, documents. type is a free-text discriminator used to pick an icon.
+model Activity {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  type      String
+  summary   String
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+
+model Document {
+  id          String       @id @default(cuid())
+  title       String
+  type        DocumentType
+  content     String       @db.Text
+  isTemplate  Boolean      @default(false)
+  variables   Json?
+  version     Int          @default(1)
+  createdById String?
+  createdBy   User?        @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  links    DocumentLink[]
+  versions DocumentVersion[]
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    Int
+  content    String   @db.Text
+  variables  Json?
+  createdAt  DateTime @default(now())
+}
+
+model DocumentLink {
+  documentId String
+  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  orgId      String
+  org        Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, orgId])
+}
+
+// ---------------------------------------------------------------------------
+// Goals & tasks (90-day goals, staff and student)
+// ---------------------------------------------------------------------------
+
+model Goal {
+  id          String        @id @default(cuid())
+  ownerType   GoalOwnerType
+  ownerUserId String
+  ownerUser   User          @relation("GoalOwnerUser", fields: [ownerUserId], references: [id])
+  title       String
+  description String?
+  category    GoalCategory
+  targetDate  DateTime?
+  createdAt   DateTime      @default(now())
+
+  tasks Task[]
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  goalId      String
+  goal        Goal       @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title       String
+  assigneeId  String?
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  dueDate     DateTime?
+  status      TaskStatus @default(todo)
+  orderIndex  Int        @default(0)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+
+  timeEntries TimeEntry[]
+}
+
+// ---------------------------------------------------------------------------
+// Time tracking
+// ---------------------------------------------------------------------------
+
+model TimeEntry {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  orgId           String?
+  org             Organisation? @relation(fields: [orgId], references: [id])
+  taskId          String?
+  task            Task?     @relation(fields: [taskId], references: [id])
+  startTime       DateTime
+  endTime         DateTime?
+  durationSeconds Int?
+  note            String?
+  createdAt       DateTime  @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Finance
+// ---------------------------------------------------------------------------
+
+model Invoice {
+  id        String        @id @default(cuid())
+  orgId     String
+  org       Organisation  @relation(fields: [orgId], references: [id])
+  lineItems Json
+  amountNzd Decimal       @db.Decimal(10, 2)
+  status    InvoiceStatus @default(draft)
+  dueDate   DateTime
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model Bill {
+  id        String     @id @default(cuid())
+  supplier  String
+  amountNzd Decimal    @db.Decimal(10, 2)
+  dueDate   DateTime
+  status    BillStatus @default(scheduled)
+  fileUrl   String?
+  createdAt DateTime   @default(now())
+}
+
+/// Populated via manual CSV import today; src/lib/integrations/bank-feed.ts defines
+/// the same shape so a live Xero/bank-feed adapter can populate it without a refactor.
+model BankTransaction {
+  id          String               @id @default(cuid())
+  date        DateTime
+  description String
+  amountNzd   Decimal              @db.Decimal(10, 2)
+  category    String?
+  direction   TransactionDirection
+  createdAt   DateTime             @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Calendar / meetings
+// ---------------------------------------------------------------------------
+
+model Meeting {
+  id              String       @id @default(cuid())
+  orgId           String?
+  org             Organisation? @relation(fields: [orgId], references: [id])
+  staffId         String
+  staff           User         @relation("MeetingStaff", fields: [staffId], references: [id])
+  type            MeetingType
+  startTime       DateTime
+  endTime         DateTime
+  calendarEventId String?
+  createdAt       DateTime     @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Scholarships (student + business customer portals)
+// ---------------------------------------------------------------------------
+
+model Scholarship {
+  id             String    @id @default(cuid())
+  title          String
+  field          String?
+  region         String?
+  educationLevel String?
+  amount         String?
+  deadline       DateTime?
+  description    String?   @db.Text
+  url            String?
+  createdAt      DateTime  @default(now())
+
+  bookmarks StudentBookmark[]
+}
+
+model StudentBookmark {
+  studentId     String
+  student       User        @relation(fields: [studentId], references: [id])
+  scholarshipId String
+  scholarship   Scholarship @relation(fields: [scholarshipId], references: [id])
+  createdAt     DateTime    @default(now())
+
+  @@id([studentId, scholarshipId])
+}
+
+// ---------------------------------------------------------------------------
+// Student document builders
+// ---------------------------------------------------------------------------
+
+model CvDocument {
+  id                String   @id @default(cuid())
+  studentId         String
+  student           User     @relation(fields: [studentId], references: [id])
+  structuredContent Json
+  exportedUrl       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ApplicationDocument {
+  id                String   @id @default(cuid())
+  studentId         String
+  student           User     @relation(fields: [studentId], references: [id])
+  scholarshipId     String?
+  structuredContent Json
+  exportedUrl       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model CoverLetter {
+  id                String   @id @default(cuid())
+  studentId         String
+  student           User     @relation(fields: [studentId], references: [id])
+  structuredContent Json
+  exportedUrl       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
