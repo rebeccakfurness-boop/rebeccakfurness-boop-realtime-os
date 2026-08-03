@@ -176,17 +176,17 @@ model User {
 /// A staff invite (new staff member) or a business-customer invite issued from a
 /// Customer Card. Consumed on first sign-in via the magic-link/token flow.
 model Invite {
-  id            String   @id @default(cuid())
-  email         String
-  role          Role
-  orgId         String?
-  org           Organisation? @relation(fields: [orgId], references: [id])
-  token         String   @unique
-  createdById   String?
-  createdBy     User?    @relation("InviteCreatedBy", fields: [createdById], references: [id])
-  acceptedAt    DateTime?
-  expiresAt     DateTime
-  createdAt     DateTime @default(now())
+  id          String        @id @default(cuid())
+  email       String
+  role        Role
+  orgId       String?
+  org         Organisation? @relation(fields: [orgId], references: [id])
+  token       String        @unique
+  createdById String?
+  createdBy   User?         @relation("InviteCreatedBy", fields: [createdById], references: [id])
+  acceptedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime      @default(now())
 }
 
 model Organisation {
@@ -216,40 +216,40 @@ model Organisation {
 }
 
 model Contact {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   orgId     String
   org       Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
   name      String
   title     String?
   email     String?
   phone     String?
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now())
 
   emails Email[]
 }
 
 /// Populated via the Gmail integration abstraction (see src/lib/integrations/gmail.ts).
 model Email {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   orgId     String
-  org       Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org       Organisation   @relation(fields: [orgId], references: [id], onDelete: Cascade)
   contactId String?
-  contact   Contact? @relation(fields: [contactId], references: [id])
+  contact   Contact?       @relation(fields: [contactId], references: [id])
   subject   String
-  body      String   @db.Text
+  body      String         @db.Text
   direction EmailDirection
-  timestamp DateTime @default(now())
+  timestamp DateTime       @default(now())
 }
 
 /// Chronological activity feed per Customer Card: emails, calls, meetings, notes,
 /// invoices, tasks, documents. type is a free-text discriminator used to pick an icon.
 model Activity {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   orgId     String
   org       Organisation @relation(fields: [orgId], references: [id], onDelete: Cascade)
   type      String
   summary   String
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now())
 }
 
 // ---------------------------------------------------------------------------
@@ -257,17 +257,18 @@ model Activity {
 // ---------------------------------------------------------------------------
 
 model Document {
-  id          String       @id @default(cuid())
-  title       String
-  type        DocumentType
-  content     String       @db.Text
-  isTemplate  Boolean      @default(false)
-  variables   Json?
-  version     Int          @default(1)
-  createdById String?
-  createdBy   User?        @relation("DocumentCreatedBy", fields: [createdById], references: [id])
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id               String       @id @default(cuid())
+  title            String
+  type             DocumentType
+  content          String       @db.Text
+  isTemplate       Boolean      @default(false)
+  isPublicResource Boolean      @default(false)
+  variables        Json?
+  version          Int          @default(1)
+  createdById      String?
+  createdBy        User?        @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   links    DocumentLink[]
   versions DocumentVersion[]
@@ -331,18 +332,18 @@ model Task {
 // ---------------------------------------------------------------------------
 
 model TimeEntry {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
   orgId           String?
   org             Organisation? @relation(fields: [orgId], references: [id])
   taskId          String?
-  task            Task?     @relation(fields: [taskId], references: [id])
+  task            Task?         @relation(fields: [taskId], references: [id])
   startTime       DateTime
   endTime         DateTime?
   durationSeconds Int?
   note            String?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime      @default(now())
 }
 
 // ---------------------------------------------------------------------------
@@ -388,16 +389,16 @@ model BankTransaction {
 // ---------------------------------------------------------------------------
 
 model Meeting {
-  id              String       @id @default(cuid())
+  id              String        @id @default(cuid())
   orgId           String?
   org             Organisation? @relation(fields: [orgId], references: [id])
   staffId         String
-  staff           User         @relation("MeetingStaff", fields: [staffId], references: [id])
+  staff           User          @relation("MeetingStaff", fields: [staffId], references: [id])
   type            MeetingType
   startTime       DateTime
   endTime         DateTime
   calendarEventId String?
-  createdAt       DateTime     @default(now())
+  createdAt       DateTime      @default(now())
 }
 
 // ---------------------------------------------------------------------------

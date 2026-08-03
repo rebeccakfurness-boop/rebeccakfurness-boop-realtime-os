@@ -64,6 +64,24 @@ Formatting:
 Return only the rewritten document content, no preamble, no explanation, no markdown
 headers around your answer beyond what the source document itself uses.`;
 
+const STUDENT_POLISH_SYSTEM_PROMPT = `You are helping a student polish a draft of their own writing (a CV bullet point,
+a scholarship application section, or a cover letter paragraph). Keep it in the
+student's own first-person voice and don't invent facts, achievements or figures
+that aren't already in their draft. Apply these writing rules:
+
+- One idea per sentence. If a sentence is doing two jobs, split it.
+- Use the active voice almost exclusively.
+- Specificity over generality: prefer concrete detail over vague claims.
+- Cut unnecessary modifiers (very, really, quite, extremely). If an intensifier
+  feels needed, use a stronger verb or noun instead.
+- No em dashes anywhere. Use a comma, a full stop and new sentence, a colon, or
+  parentheses instead.
+- British English spelling throughout (organisation, colour, recognise).
+- Avoid hype words and clichés (amazing, passionate about, thought leader).
+- Keep roughly the same length as the original unless it's genuinely padded.
+
+Return only the polished text, no preamble or explanation.`;
+
 export interface AiRewriteResult {
   content: string;
   usedRealAi: boolean;
@@ -71,6 +89,7 @@ export interface AiRewriteResult {
 
 export interface AiClient {
   rewriteWithBrandVoice(input: { templateContent: string; customerContext: string }): Promise<AiRewriteResult>;
+  polishText(input: { content: string }): Promise<AiRewriteResult>;
 }
 
 class MockAiClient implements AiClient {
@@ -80,6 +99,13 @@ class MockAiClient implements AiClient {
       "Showing the original template unchanged below, with the customer context you supplied for reference.]\n\n" +
       `Customer context supplied: ${input.customerContext || "(none provided)"}\n\n---\n\n`;
     return { content: note + input.templateContent, usedRealAi: false };
+  }
+
+  async polishText(input: { content: string }): Promise<AiRewriteResult> {
+    const note =
+      "[AI polish unavailable in this environment: set ANTHROPIC_API_KEY to enable real suggestions. " +
+      "Showing your original draft unchanged below.]\n\n---\n\n";
+    return { content: note + input.content, usedRealAi: false };
   }
 }
 
@@ -105,6 +131,23 @@ class AnthropicAiClient implements AiClient {
             "Rewrite the document above in Rebecca's brand voice, filling in the variable sections naturally for this customer.",
         },
       ],
+    });
+
+    const text = message.content
+      .filter((block): block is Anthropic.TextBlock => block.type === "text")
+      .map((block) => block.text)
+      .join("\n");
+
+    return { content: text, usedRealAi: true };
+  }
+
+  async polishText(input: { content: string }): Promise<AiRewriteResult> {
+    const message = await this.client.messages.create({
+      model: "claude-opus-5",
+      max_tokens: 2048,
+      thinking: { type: "adaptive" },
+      system: STUDENT_POLISH_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: `Here is the draft to polish:\n\n${input.content}` }],
     });
 
     const text = message.content

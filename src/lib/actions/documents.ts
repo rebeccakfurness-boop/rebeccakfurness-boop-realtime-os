@@ -85,6 +85,14 @@ export async function revertToVersion(input: { documentId: string; versionId: st
   revalidatePath(`/staff/documents/${input.documentId}`);
 }
 
+export async function setPublicResource(input: { documentId: string; isPublicResource: boolean }) {
+  await requireStaff();
+  await prisma.document.update({ where: { id: input.documentId }, data: { isPublicResource: input.isPublicResource } });
+  revalidatePath(`/staff/documents/${input.documentId}`);
+  revalidatePath("/student/resources");
+  revalidatePath("/business/resources");
+}
+
 export async function deleteDocument(input: { documentId: string }) {
   await requireStaff();
   await prisma.document.delete({ where: { id: input.documentId } });

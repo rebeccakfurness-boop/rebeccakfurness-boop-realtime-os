@@ -6,6 +6,7 @@ import VersionHistory from "@/components/documents/VersionHistory";
 import AiCustomiseForm from "@/components/documents/AiCustomiseForm";
 import LinkedOrgsPanel from "@/components/documents/LinkedOrgsPanel";
 import DeleteDocumentButton from "@/components/documents/DeleteDocumentButton";
+import PublicResourceToggle from "@/components/documents/PublicResourceToggle";
 
 const TYPE_LABEL: Record<string, string> = {
   script: "Script",
@@ -46,6 +47,10 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
       </div>
 
       <div className="mt-8 flex flex-col gap-6">
+        {document.type === "resource" && (
+          <PublicResourceToggle documentId={document.id} initialValue={document.isPublicResource} />
+        )}
+
         <DocumentEditor documentId={document.id} initialContent={document.content} initialVariables={variables} />
 
         {document.isTemplate && <AiCustomiseForm documentId={document.id} originalContent={document.content} />}
