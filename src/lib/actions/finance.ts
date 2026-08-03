@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { createBankFeedClient } from "@/lib/integrations/bank-feed";
 import type { InvoiceStatus, BillStatus } from "@prisma/client";
 
 async function requireStaff() {
@@ -94,6 +95,22 @@ export async function updateBillStatus(input: { billId: string; status: BillStat
   await requireStaff();
   await prisma.bill.update({ where: { id: input.billId }, data: { status: input.status } });
   revalidatePath("/staff/finance");
+}
+
+/**
+ * Pulls transactions from the live bank-feed integration (Xero once connected).
+ * Returns 0 against the mock client, since a live feed isn't wired up yet, in
+ * which case CSV import below remains the primary way to populate the ledger.
+ */
+export async function syncBankFeed() {
+  await requireStaff();
+  const client = createBankFeedClient();
+  const transactions = await client.fetchTransactions(30);
+  if (transactions.length > 0) {
+    await prisma.bankTransaction.createMany({ data: transactions });
+    revalidatePath("/staff/finance");
+  }
+  return { count: transactions.length };
 }
 
 /**

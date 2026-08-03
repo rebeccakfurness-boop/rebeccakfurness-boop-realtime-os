@@ -3,6 +3,7 @@ import { format, subMonths, startOfMonth, endOfMonth, addMonths } from "date-fns
 import { prisma } from "@/lib/prisma";
 import CashflowChart, { type MonthlyCashflow } from "@/components/finance/CashflowChart";
 import CsvUploadForm from "@/components/finance/CsvUploadForm";
+import SyncBankFeedButton from "@/components/finance/SyncBankFeedButton";
 import NewBillForm from "@/components/finance/NewBillForm";
 import BillStatusToggle from "@/components/finance/BillStatusToggle";
 
@@ -83,8 +84,11 @@ export default async function FinancePage() {
         </div>
       </div>
 
-      <div className="mt-6">
-        <CsvUploadForm />
+      <div className="mt-6 flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <CsvUploadForm />
+        </div>
+        <SyncBankFeedButton />
       </div>
 
       <div className="mt-6 rounded-2xl border border-neutral-border bg-white p-5">
