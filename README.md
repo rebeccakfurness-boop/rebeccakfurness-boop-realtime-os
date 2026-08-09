@@ -53,6 +53,7 @@ until real credentials are supplied.
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Real Gmail sync and Google Calendar availability/booking |
 | `XERO_CLIENT_ID` / `XERO_CLIENT_SECRET`     | Real Xero bank-feed sync (CSV import always works) |
 | `ANTHROPIC_API_KEY`                        | Real "Customise with AI" / "Polish with AI" calls (`claude-opus-5`) |
+| `BLOB_READ_WRITE_TOKEN`                    | File uploads (CRM files, bill uploads) persist via Vercel Blob instead of local disk — **required** on Vercel, since local-disk writes don't persist there |
 
 ## Integration abstraction layers
 
@@ -65,6 +66,9 @@ interface + mock implementation + environment-gated factory, in `src/lib/integra
 - `bank-feed.ts` — bank transaction sync (`syncBankFeed` action on the Finance page; CSV
   import is the primary path either way)
 - `ai.ts` — brand-voice document rewriting and student writing polish
+- `storage.ts` — file uploads (CRM Files tab, Finance bill uploads); on Vercel this
+  **must** be configured (attach Vercel Blob storage) since local-disk writes don't
+  persist on serverless hosts
 
 Each `create*Client()` factory returns a real client when the relevant environment
 variables are set, and otherwise falls back to a mock that returns clearly-labelled

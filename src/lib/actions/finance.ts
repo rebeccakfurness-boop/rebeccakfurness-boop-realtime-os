@@ -1,12 +1,10 @@
 "use server";
 
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createBankFeedClient } from "@/lib/integrations/bank-feed";
+import { createStorageClient } from "@/lib/integrations/storage";
 import type { InvoiceStatus, BillStatus } from "@prisma/client";
 
 async function requireStaff() {
@@ -79,11 +77,9 @@ export async function createBill(formData: FormData) {
 
   let fileUrl: string | undefined;
   if (file && file.size > 0) {
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
-    const safeName = `${randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-    await writeFile(path.join(uploadsDir, safeName), Buffer.from(await file.arrayBuffer()));
-    fileUrl = `/uploads/${safeName}`;
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const uploaded = await createStorageClient().uploadFile({ filename: file.name, buffer: bytes, contentType: file.type });
+    fileUrl = uploaded.url;
   }
 
   await prisma.bill.create({ data: { supplier, amountNzd, dueDate: new Date(dueDate), fileUrl } });

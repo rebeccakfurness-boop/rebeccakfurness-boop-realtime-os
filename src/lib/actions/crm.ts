@@ -1,12 +1,11 @@
 "use server";
 
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { createGmailClient } from "@/lib/integrations/gmail";
+import { createStorageClient } from "@/lib/integrations/storage";
 import type { OrgType, PipelineStage, PaidStatus } from "@prisma/client";
 
 async function requireStaff() {
@@ -96,17 +95,14 @@ export async function uploadDocumentFile(formData: FormData) {
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) return { error: "Choose a file first." };
 
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
-  const safeName = `${randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadsDir, safeName), bytes);
+  const { url } = await createStorageClient().uploadFile({ filename: file.name, buffer: bytes, contentType: file.type });
 
   const doc = await prisma.document.create({
     data: {
       title: file.name,
       type: "resource",
-      content: `/uploads/${safeName}`,
+      content: url,
       isTemplate: false,
       createdById: user.id,
     },
