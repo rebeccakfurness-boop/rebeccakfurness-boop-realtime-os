@@ -2,6 +2,8 @@ import Mark from "@/components/Mark";
 import { getAvailableSlots } from "@/lib/actions/calendar";
 import PublicBookingForm from "@/components/calendar/PublicBookingForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function PublicBookPage() {
   const slots = await getAvailableSlots();
 
