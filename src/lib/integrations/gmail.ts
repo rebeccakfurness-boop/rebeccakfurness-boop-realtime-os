@@ -1,16 +1,15 @@
 /**
  * Gmail integration boundary.
  *
- * Real usage: set GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET, implement the OAuth
- * consent flow for a staff Gmail account, and swap MockGmailClient below for a
- * real client that calls the Gmail API (users.messages.list / .get) filtered to
- * the contact email addresses on an Organisation, then upsert results into the
- * Email table via the same shape this mock returns.
- *
- * Until then, every call to the CRM's "Sync Gmail" action runs against this
- * mock, so the threaded-email timeline on a Customer Card is fully usable in
- * dev without real credentials.
+ * Real usage: a staff member connects their Google account from
+ * /staff/settings (see src/app/api/google/connect, src/lib/integrations/
+ * google-auth.ts). Once GOOGLE_CLIENT_ID/SECRET are set AND a staff Google
+ * account is connected, the CRM's "Sync Gmail" action reads real threaded
+ * correspondence via the Gmail API instead of the mock.
  */
+
+import { google, type gmail_v1 } from "googleapis";
+import { getAuthorizedGoogleClient, getConnectedGoogleAccount, isGoogleConfigured } from "@/lib/integrations/google-auth";
 
 export interface GmailMessage {
   contactEmail: string;
@@ -47,10 +46,45 @@ class MockGmailClient implements GmailClient {
   }
 }
 
-export function createGmailClient(): GmailClient {
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    // TODO: return a real Gmail API-backed client once OAuth credentials are live.
-    console.warn("[gmail] GOOGLE_CLIENT_ID is set but no live Gmail client is implemented yet, falling back to mock.");
+function headerValue(message: gmail_v1.Schema$Message, name: string) {
+  return message.payload?.headers?.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+}
+
+class RealGmailClient implements GmailClient {
+  async listMessagesForAddresses(addresses: string[]): Promise<GmailMessage[]> {
+    const auth = await getAuthorizedGoogleClient();
+    const account = await getConnectedGoogleAccount();
+    if (!auth || !account?.user.email) return [];
+
+    const gmail = google.gmail({ version: "v1", auth });
+    const ownEmail = account.user.email.toLowerCase();
+    const results: GmailMessage[] = [];
+
+    for (const address of addresses) {
+      const list = await gmail.users.messages.list({ userId: "me", q: `{from:${address} to:${address}}`, maxResults: 15 });
+      for (const item of list.data.messages ?? []) {
+        if (!item.id) continue;
+        const full = await gmail.users.messages.get({
+          userId: "me",
+          id: item.id,
+          format: "metadata",
+          metadataHeaders: ["Subject", "From", "To", "Date"],
+        });
+        const from = headerValue(full.data, "From").toLowerCase();
+        results.push({
+          contactEmail: address,
+          subject: headerValue(full.data, "Subject") || "(no subject)",
+          body: full.data.snippet ?? "",
+          direction: from.includes(ownEmail) ? "outbound" : "inbound",
+          timestamp: full.data.internalDate ? new Date(Number(full.data.internalDate)) : new Date(),
+        });
+      }
+    }
+    return results;
   }
-  return new MockGmailClient();
+}
+
+export async function createGmailClient(): Promise<GmailClient> {
+  if (!isGoogleConfigured()) return new MockGmailClient();
+  return new RealGmailClient();
 }

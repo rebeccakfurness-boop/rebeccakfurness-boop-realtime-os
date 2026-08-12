@@ -65,7 +65,7 @@ export async function syncGmail(input: { orgId: string }) {
   const addresses = contacts.map((c) => c.email!).filter(Boolean);
   if (addresses.length === 0) return;
 
-  const client = createGmailClient();
+  const client = await createGmailClient();
   const messages = await client.listMessagesForAddresses(addresses);
 
   const contactByEmail = new Map(contacts.map((c) => [c.email, c]));

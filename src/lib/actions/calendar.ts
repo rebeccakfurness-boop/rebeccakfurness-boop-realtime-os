@@ -7,7 +7,7 @@ import { createCalendarClient } from "@/lib/integrations/calendar";
 import type { MeetingType } from "@prisma/client";
 
 export async function getAvailableSlots(staffId?: string) {
-  const client = createCalendarClient();
+  const client = await createCalendarClient();
   const slots = await client.listAvailability(14);
 
   const staff = staffId ? [staffId] : (await prisma.user.findMany({ where: { role: "staff" }, select: { id: true } })).map((s) => s.id);
@@ -29,7 +29,7 @@ interface CreateMeetingInput {
 }
 
 async function createMeetingRecord(input: CreateMeetingInput) {
-  const client = createCalendarClient();
+  const client = await createCalendarClient();
   const startTime = new Date(input.startTime);
   const endTime = new Date(input.endTime);
 

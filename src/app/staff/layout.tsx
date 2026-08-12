@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Kanban, CalendarDays, Clock, Wallet, FileText } from "lucide-react";
+import { LayoutDashboard, Building2, Kanban, CalendarDays, Clock, Wallet, FileText, Settings } from "lucide-react";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -34,6 +34,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           <NavLink scale="deep" href="/staff/time" label="Time" icon={<Clock size={18} strokeWidth={2} />} />
           <NavLink scale="deep" href="/staff/finance" label="Finance" icon={<Wallet size={18} strokeWidth={2} />} />
           <NavLink scale="deep" href="/staff/documents" label="Documents" icon={<FileText size={18} strokeWidth={2} />} />
+          <NavLink scale="deep" href="/staff/settings" label="Settings" icon={<Settings size={18} strokeWidth={2} />} />
         </>
       }
     >

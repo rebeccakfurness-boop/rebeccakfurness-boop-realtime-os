@@ -50,7 +50,7 @@ until real credentials are supplied.
 | Variable                                  | Enables                                   |
 | ------------------------------------------ | ------------------------------------------ |
 | `EMAIL_SERVER_*`, `EMAIL_FROM`             | Real magic-link emails (dev prints to console instead) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Real Gmail sync and Google Calendar availability/booking |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Real Gmail sync and Google Calendar availability/booking, once a staff member connects their account from `/staff/settings` |
 | `XERO_CLIENT_ID` / `XERO_CLIENT_SECRET`     | Real Xero bank-feed sync (CSV import always works) |
 | `ANTHROPIC_API_KEY`                        | Real "Customise with AI" / "Polish with AI" calls (`claude-opus-5`) |
 | `BLOB_READ_WRITE_TOKEN`                    | File uploads (CRM files, bill uploads) persist via Vercel Blob instead of local disk — **required** on Vercel, since local-disk writes don't persist there |
@@ -60,9 +60,15 @@ until real credentials are supplied.
 Every third-party integration that needs live credentials is implemented as a clean
 interface + mock implementation + environment-gated factory, in `src/lib/integrations/`:
 
-- `gmail.ts` — email threading on Customer Cards
+- `gmail.ts` — email threading on Customer Cards (real client reads via the Gmail API)
 - `calendar.ts` — meeting availability and booking (staff, business self-serve, and the
-  public booking link all go through the same `createCalendarClient()`)
+  public booking link all go through the same `createCalendarClient()`; real client
+  reads/writes Google Calendar via `freebusy.query` / `events.insert`)
+- `google-auth.ts` — shared OAuth boundary for the two above: a staff member connects
+  their Google account from `/staff/settings` (`/api/google/connect` →
+  `/api/google/callback`), tokens are stored in Auth.js's own `Account` table and
+  refreshed automatically. Single-account model: whichever staff member connects first
+  is whose Calendar/Gmail the app uses.
 - `bank-feed.ts` — bank transaction sync (`syncBankFeed` action on the Finance page; CSV
   import is the primary path either way)
 - `ai.ts` — brand-voice document rewriting and student writing polish
